@@ -4046,6 +4046,34 @@ bool tcmdbputproc(TCMDB *mdb, const void *kbuf, int ksiz, const void *vbuf, int 
   return rv;
 }
 
+/* Store a record into a on-memory hash database object with compare and swap. */
+const void* tcmdbcas(TCMDB *mdb, const void *kbuf, int ksiz, const void *vbuf, int vsiz,
+        const void* v2buf, int v2siz, int *sp) {
+    assert(mdb && kbuf && ksiz >= 0 && vbuf && sp);
+    unsigned int mi;
+    TCMDBHASH(mi, kbuf, ksiz);
+    if(pthread_rwlock_wrlock((pthread_rwlock_t *)mdb->mmtxs + mi) != 0) return NULL;
+
+    int sp3;
+    const char *v3buf = tcmapget(mdb->maps[mi], kbuf, ksiz, &sp3);
+    
+    char *rv;
+    if ((v3buf == NULL && v2buf == NULL) || (v2buf && sp3 == v2siz && memcmp(v3buf, v2buf, v2siz) == 0)) {
+        // no change
+        tcmapput(mdb->maps[mi], kbuf, ksiz, vbuf, vsiz);
+        TCMEMDUP(rv, vbuf, vsiz);
+        *sp = vsiz;
+    } else {
+        if (v3buf) {
+            TCMEMDUP(rv, v3buf, sp3);
+        } else {
+            rv = NULL;
+        }
+        *sp = sp3;
+    }
+    pthread_rwlock_unlock((pthread_rwlock_t *)mdb->mmtxs + mi);
+    return rv;
+}
 
 /* Retrieve a record and move it astern in an on-memory hash database. */
 void *tcmdbget3(TCMDB *mdb, const void *kbuf, int ksiz, int *sp){

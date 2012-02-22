@@ -1749,7 +1749,22 @@ void tcmdbputcat3(TCMDB *mdb, const void *kbuf, int ksiz, const void *vbuf, int 
 bool tcmdbputproc(TCMDB *mdb, const void *kbuf, int ksiz, const void *vbuf, int vsiz,
                   TCPDPROC proc, void *op);
 
-
+/* Store a record into a on-memory hash database object with compare and swap.
+   `mdb' specifies the on-memory hash database object.
+   `kbuf' specifies the pointer to the region of the key.
+   `ksiz' specifies the size of the region of the key.
+   `vbuf' specifies the pointer to the region of the value. 
+   `vsiz' specifies the size of the region of the value.
+   `v2buf' specifies the pointer to the region of the value to compare with. NULL means that the
+   key doesn't exists. tcmdbcas is than equivalent to tcmdbputkeep. Otherwise, if the current value of the key
+   is equal to v2buf, vbuf is stored in the hash database.
+   `v2siz' specifies the size of the region of the value to compare with.
+   Returns a pointer a region equal to bvuf if the values have been swapped. Otherwise, the
+   unchanged record is returned. In either case, if the return value is not NULL, the client has to
+   free the memory. The function cannot fail. */
+const void* tcmdbcas(TCMDB *mdb, const void *kbuf, int ksiz, const void *vbuf, int vsiz,
+        const void* v2buf, int v2siz, int *sp);
+        
 /* Retrieve a record and move it astern in an on-memory hash database object.
    `mdb' specifies the on-memory hash database object.
    `kbuf' specifies the pointer to the region of the key.
